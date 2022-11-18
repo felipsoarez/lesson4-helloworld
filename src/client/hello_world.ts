@@ -230,3 +230,34 @@ export async function reportGreetings(): Promise<void> {
     'time(s)',
   );
 }
+
+// Step 1: Connect to the Solana Devnet
+connection = new Connection(clusterApiUrl("devnet"),"confirmed");
+const version = await connection.getVersion();
+console.log('Connection to cluster established:', version);
+
+//Step 2: Generate a keypair - this would be an account that pays for the calls to the program
+payer = Keypair.generate();
+console.log("Public Key of Payer is:", payer.publicKey);
+
+//Step 3: Requesting an airdrop
+const sig = await connection.requestAirdrop(
+  payer.publicKey,
+  2 * LAMPORTS_PER_SOL,
+);
+
+await connection.confirmTransaction(sig);
+
+// STEP 4: Create an instruction to be sent to the program
+const instruction = new TransactionInstruction({
+  keys: [{pubkey: greetedPubkey, isSigner: false, isWritable: true}],
+  programId,
+  data: Buffer.alloc(0), // All instructions are hellos
+});
+
+//STEP 5: Create a transaction to be sent to the blockchain containing the instruction
+await sendAndConfirmTransaction(
+  connection,
+  new Transaction().add(instruction),
+  [payer],
+);
