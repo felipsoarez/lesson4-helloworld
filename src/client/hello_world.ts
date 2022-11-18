@@ -11,11 +11,10 @@ import {
   TransactionInstruction,
   Transaction,
   sendAndConfirmTransaction,
-} from '@solana/web3.js';
-import fs from 'mz/fs';
-import path from 'path';
-import * as borsh from 'borsh';
-
+} from "@solana/web3.js";
+import fs from "mz/fs";
+import path from "path";
+import * as borsh from "borsh";
 
 /**
  * Connecion to the network
@@ -40,7 +39,7 @@ let greetedPubkey: PublicKey;
 /**
  * Path to program files
  */
-const PROGRAM_PATH = path.resolve(__dirname, '../../dist/program');
+const PROGRAM_PATH = path.resolve(__dirname, "../../dist/program");
 
 /**
  * Path to program shared object file which should be deployed on chain.
@@ -48,20 +47,20 @@ const PROGRAM_PATH = path.resolve(__dirname, '../../dist/program');
  *   - `npm run build:program-c`
  *   - `npm run build:program-rust`
  */
-const PROGRAM_SO_PATH = path.join(PROGRAM_PATH, 'helloworld.so');
+const PROGRAM_SO_PATH = path.join(PROGRAM_PATH, "helloworld.so");
 
 /**
  * Path to the keypair of the deployed program.
  * This file is created when running `solana program deploy dist/program/helloworld.so`
  */
-const PROGRAM_KEYPAIR_PATH = path.join(PROGRAM_PATH, 'helloworld-keypair.json');
+const PROGRAM_KEYPAIR_PATH = path.join(PROGRAM_PATH, "helloworld-keypair.json");
 
 /**
  * The state of a greeting account managed by the hello world program
  */
 class GreetingAccount {
   counter = 0;
-  constructor(fields: {counter: number} | undefined = undefined) {
+  constructor(fields: { counter: number } | undefined = undefined) {
     if (fields) {
       this.counter = fields.counter;
     }
@@ -72,7 +71,7 @@ class GreetingAccount {
  * Borsh schema definition for greeting accounts
  */
 const GreetingSchema = new Map([
-  [GreetingAccount, {kind: 'struct', fields: [['counter', 'u32']]}],
+  [GreetingAccount, { kind: "struct", fields: [["counter", "u32"]] }],
 ]);
 
 /**
@@ -80,7 +79,7 @@ const GreetingSchema = new Map([
  */
 const GREETING_SIZE = borsh.serialize(
   GreetingSchema,
-  new GreetingAccount(),
+  new GreetingAccount()
 ).length;
 
 /**
@@ -92,27 +91,42 @@ export async function establishConnection(): Promise<void> {
    version from the connection object. */
 
   //Insert the Step 1 code from the tutorial here
+  // Step 1: Connect to the Solana Devnet
+  connection = new Connection(clusterApiUrl("devnet"), "confirmed");
+  const version = await connection.getVersion();
+  console.log("Connection to cluster established:", version);
 }
 
 /**
  * Generate an account to pay for everything
  */
 export async function establishPayer(): Promise<void> {
-  
   //Step 2: Generate a keypair - this would be an account that pays for the calls to the program
-  
+
   //Insert the Step 2 code from the tutorial here
-  
+
   //Step 3: Requesting an airdrop
 
-   //Insert the Step 3 code from the tutorial here
-   
+  //Insert the Step 3 code from the tutorial here
+
+  //Step 2: Generate a keypair - this would be an account that pays for the calls to the program
+  payer = Keypair.generate();
+  console.log("Public Key of Payer is:", payer.publicKey);
+
+  //Step 3: Requesting an airdrop
+  const sig = await connection.requestAirdrop(
+    payer.publicKey,
+    2 * LAMPORTS_PER_SOL
+  );
+
+  await connection.confirmTransaction(sig);
+
   console.log(
-    'Using account',
+    "Using account",
     payer.publicKey.toBase58(),
-    'containing',
-    2* LAMPORTS_PER_SOL,
-    'SOL to pay for fees',
+    "containing",
+    2 * LAMPORTS_PER_SOL,
+    "SOL to pay for fees"
   );
 }
 
@@ -127,7 +141,7 @@ export async function checkProgram(): Promise<void> {
   } catch (err) {
     const errMsg = (err as Error).message;
     throw new Error(
-      `Failed to read program keypair at '${PROGRAM_KEYPAIR_PATH}' due to error: ${errMsg}. Program may need to be deployed with \`solana program deploy dist/program/helloworld.so\``,
+      `Failed to read program keypair at '${PROGRAM_KEYPAIR_PATH}' due to error: ${errMsg}. Program may need to be deployed with \`solana program deploy dist/program/helloworld.so\``
     );
   }
 
@@ -136,10 +150,10 @@ export async function checkProgram(): Promise<void> {
   if (programInfo === null) {
     if (fs.existsSync(PROGRAM_SO_PATH)) {
       throw new Error(
-        'Program needs to be deployed with `solana program deploy dist/program/helloworld.so`',
+        "Program needs to be deployed with `solana program deploy dist/program/helloworld.so`"
       );
     } else {
-      throw new Error('Program needs to be built and deployed');
+      throw new Error("Program needs to be built and deployed");
     }
   } else if (!programInfo.executable) {
     throw new Error(`Program is not executable`);
@@ -147,23 +161,23 @@ export async function checkProgram(): Promise<void> {
   console.log(`Using program ${programId.toBase58()}`);
 
   // Derive the address (public key) of a greeting account from the program so that it's easy to find later.
-  const GREETING_SEED = 'hello';
+  const GREETING_SEED = "hello";
   greetedPubkey = await PublicKey.createWithSeed(
     payer.publicKey,
     GREETING_SEED,
-    programId,
+    programId
   );
 
   // Check if the greeting account has already been created
   const greetedAccount = await connection.getAccountInfo(greetedPubkey);
   if (greetedAccount === null) {
     console.log(
-      'Creating account',
+      "Creating account",
       greetedPubkey.toBase58(),
-      'to say hello to',
+      "to say hello to"
     );
     const lamports = await connection.getMinimumBalanceForRentExemption(
-      GREETING_SIZE,
+      GREETING_SIZE
     );
 
     const transaction = new Transaction().add(
@@ -175,7 +189,7 @@ export async function checkProgram(): Promise<void> {
         lamports,
         space: GREETING_SIZE,
         programId,
-      }),
+      })
     );
     await sendAndConfirmTransaction(connection, transaction, [payer]);
   }
@@ -184,10 +198,10 @@ export async function checkProgram(): Promise<void> {
 /**
  * Create a Keypair from a secret key stored in file as bytes' array
  */
- export async function createKeypairFromFile(
-  filePath: string,
+export async function createKeypairFromFile(
+  filePath: string
 ): Promise<Keypair> {
-  const secretKeyString = await fs.readFile(filePath, {encoding: 'utf8'});
+  const secretKeyString = await fs.readFile(filePath, { encoding: "utf8" });
   const secretKey = Uint8Array.from(JSON.parse(secretKeyString));
   return Keypair.fromSecretKey(secretKey);
 }
@@ -196,18 +210,29 @@ export async function checkProgram(): Promise<void> {
  * Say hello
  */
 export async function sayHello(): Promise<void> {
-
   //Create a Hello transaction to the deployed contract
-  console.log('Saying hello to', greetedPubkey.toBase58());
-  
+  console.log("Saying hello to", greetedPubkey.toBase58());
+
   // STEP 4: Create an instruction to be sent to the program
-  
+
   //Insert the Step 4 code from the tutorial here
 
   //STEP 5: Create a transaction to be sent to the blockchain containing the instruction
-  
-  //Insert the Step 5 code from the tutorial here
 
+  //Insert the Step 5 code from the tutorial here
+  // STEP 4: Create an instruction to be sent to the program
+  const instruction = new TransactionInstruction({
+    keys: [{ pubkey: greetedPubkey, isSigner: false, isWritable: true }],
+    programId,
+    data: Buffer.alloc(0), // All instructions are hellos
+  });
+
+  //STEP 5: Create a transaction to be sent to the blockchain containing the instruction
+  await sendAndConfirmTransaction(
+    connection,
+    new Transaction().add(instruction),
+    [payer]
+  );
 }
 
 /**
@@ -216,48 +241,17 @@ export async function sayHello(): Promise<void> {
 export async function reportGreetings(): Promise<void> {
   const accountInfo = await connection.getAccountInfo(greetedPubkey);
   if (accountInfo === null) {
-    throw 'Error: cannot find the greeted account';
+    throw "Error: cannot find the greeted account";
   }
   const greeting = borsh.deserialize(
     GreetingSchema,
     GreetingAccount,
-    accountInfo.data,
+    accountInfo.data
   );
   console.log(
     greetedPubkey.toBase58(),
-    'has been greeted',
+    "has been greeted",
     greeting.counter,
-    'time(s)',
+    "time(s)"
   );
 }
-
-// Step 1: Connect to the Solana Devnet
-connection = new Connection(clusterApiUrl("devnet"),"confirmed");
-const version = await connection.getVersion();
-console.log('Connection to cluster established:', version);
-
-//Step 2: Generate a keypair - this would be an account that pays for the calls to the program
-payer = Keypair.generate();
-console.log("Public Key of Payer is:", payer.publicKey);
-
-//Step 3: Requesting an airdrop
-const sig = await connection.requestAirdrop(
-  payer.publicKey,
-  2 * LAMPORTS_PER_SOL,
-);
-
-await connection.confirmTransaction(sig);
-
-// STEP 4: Create an instruction to be sent to the program
-const instruction = new TransactionInstruction({
-  keys: [{pubkey: greetedPubkey, isSigner: false, isWritable: true}],
-  programId,
-  data: Buffer.alloc(0), // All instructions are hellos
-});
-
-//STEP 5: Create a transaction to be sent to the blockchain containing the instruction
-await sendAndConfirmTransaction(
-  connection,
-  new Transaction().add(instruction),
-  [payer],
-);
